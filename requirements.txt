@@ -1,3 +1,4 @@
+# анализ данных и графики (ЛР1)
 pandas==3.0.5
 numpy==2.5.3
 matplotlib==3.11.2
@@ -5,3 +6,9 @@ seaborn==0.13.2
 plotly==7.0.0
 kaleido==1.4.0
 jupyter==1.1.1
+
+# обучение моделей и эксперименты (ЛР2)
+scikit-learn==1.9.1
+mlflow==3.16.1
+optuna==5.0.0
+mlxtend==0.25.0

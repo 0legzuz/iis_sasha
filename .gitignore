@@ -5,6 +5,11 @@
 # виртуальные окружения
 .venv*
 
+# артефакты mlflow: база экспериментов и сохранённые модели
+mlflow/mlruns.db
+mlflow/mlartifacts/
+mlruns/
+
 # служебные файлы
 .ipynb_checkpoints/
 __pycache__/

@@ -1,0 +1,9 @@
+numeric__car_age
+categorical__Fuel_Type
+categorical__Owner
+categorical__vehicle_type
+poly__car_age
+poly__Present_Price^2
+poly__car_age^2
+poly__kms_per_year^2
+kbins__Kms_Driven

@@ -1,0 +1,9 @@
+Present_Price
+Kms_Driven
+Fuel_Type
+Seller_Type
+Transmission
+Owner
+vehicle_type
+car_age
+kms_per_year

@@ -1,0 +1,19 @@
+numeric__Present_Price
+numeric__Kms_Driven
+numeric__car_age
+numeric__kms_per_year
+categorical__Fuel_Type
+categorical__Seller_Type
+categorical__Transmission
+categorical__Owner
+categorical__vehicle_type
+poly__Present_Price
+poly__car_age
+poly__kms_per_year
+poly__Present_Price^2
+poly__Present_Price car_age
+poly__Present_Price kms_per_year
+poly__car_age^2
+poly__car_age kms_per_year
+poly__kms_per_year^2
+kbins__Kms_Driven
