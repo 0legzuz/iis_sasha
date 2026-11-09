@@ -10,7 +10,10 @@ mlflow/mlruns.db
 mlflow/mlartifacts/
 mlruns/
 
+# скомпилированный байт-код python
+__pycache__/
+*.pyc
+
 # служебные файлы
 .ipynb_checkpoints/
-__pycache__/
 .DS_Store

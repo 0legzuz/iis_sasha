@@ -258,3 +258,80 @@ run_id = 54b54fccbed044c5af3fe62db2c20163
 > Здесь используется `mlflow==3.16.1` с актуальным `numpy==2.5.3`: откат numpy
 > до 1.26.4 сломал бы блокнот ЛР1, который работает на `pandas==3.0.5`.
 > Совместимость проверена — оба блокнота выполняются в одном окружении без ошибок.
+
+# Сервис предсказаний
+
+Микросервис на FastAPI, отдающий предсказания Production-модели из ЛР2.
+Код в `./services`, образ собирается и запускается в Docker.
+
+## Состав
+
+```
+services/
+  ml_service/
+    main.py            FastAPI-приложение: эндпоинты / и /api/prediction
+    api_handler.py     класс FastAPIHandler — загрузка модели и предсказание
+    requirements.txt   зависимости только для образа (не путать с корневым)
+    Dockerfile         сборка образа, команды build и run в конце файла
+  models/
+    get_model.py       выгрузка Production-модели из MLflow в model.pkl
+    model.pkl          сама модель (в репозиторий не коммитится)
+```
+
+## Получение модели
+
+Файл `model.pkl` в репозитории не хранится. Перед запуском сервиса его нужно
+выгрузить из MLflow — сервер должен быть запущен:
+
+```shell
+cd mlflow && sh start_mlflow.sh      # в отдельном терминале
+cd services/models && python get_model.py
+```
+
+Скрипт берёт модель по `run_id` Production-прогона
+(`54b54fccbed044c5af3fe62db2c20163`) и сохраняет в `model.pkl`.
+
+## Запуск без Docker
+
+```shell
+cd services/ml_service
+uvicorn main:app --reload
+```
+
+Документация и форма для запросов: http://localhost:8000/docs
+
+## Сборка образа и запуск контейнера
+
+```shell
+cd services/ml_service
+docker build -t car-price-service:1 .
+docker run -p 8000:8000 -v $(pwd)/../models:/models car-price-service:1
+```
+
+Каталог `models` подключается томом, поэтому модель не попадает внутрь образа —
+её можно заменить, не пересобирая контейнер.
+
+## Проверка работоспособности
+
+```shell
+curl http://localhost:8000/
+# {"Hello":"World"}
+
+curl -X POST "http://localhost:8000/api/prediction?item_id=42" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Present_Price": 5.59, "Kms_Driven": 27000,
+    "Fuel_Type": "Petrol", "Seller_Type": "Dealer",
+    "Transmission": "Manual", "Owner": 0,
+    "vehicle_type": "car", "car_age": 6, "kms_per_year": 4500
+  }'
+# {"item_id":42,"predict":3.775}
+```
+
+`item_id` передаётся параметром URL, признаки объекта — телом запроса.
+В ответе `predict` — предсказанная цена продажи в лакхах рупий.
+
+Категориальные признаки принимают только допустимые значения
+(`Fuel_Type`: Petrol / Diesel / CNG, `Seller_Type`: Dealer / Individual,
+`Transmission`: Manual / Automatic, `vehicle_type`: car / two_wheeler).
+На неверное значение сервис отвечает кодом 422 с описанием ошибки.
