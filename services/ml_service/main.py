@@ -13,28 +13,30 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from api_handler import FastAPIHandler
+from monitoring import instrument, observe
 
 app = FastAPI(
     title='Car Price Prediction Service',
     description='Сервис предсказаний модели из ЛР2 (RandomForestRegressor). '
                 'Цены в лакхах индийских рупий, 1 лакх = 100 000 ₹.',
-    version='1.0',
+    version='2.0',
 )
 app.handler = FastAPIHandler()
+instrument(app)
 
 
 class VehicleFeatures(BaseModel):
-    """Признаки объявления. Значения по умолчанию подставляются в форму /docs."""
+    """Обязательные признаки объявления с примерами для Swagger."""
 
-    Present_Price: float = Field(5.59, description='Цена нового экземпляра, лакхов')
-    Kms_Driven: int = Field(27000, description='Пробег, км')
-    Fuel_Type: Literal['Petrol', 'Diesel', 'CNG'] = Field('Petrol', description='Тип топлива')
-    Seller_Type: Literal['Dealer', 'Individual'] = Field('Dealer', description='Тип продавца')
-    Transmission: Literal['Manual', 'Automatic'] = Field('Manual', description='Коробка передач')
-    Owner: int = Field(0, description='Число предыдущих владельцев')
-    vehicle_type: Literal['car', 'two_wheeler'] = Field('car', description='Тип транспорта')
-    car_age: int = Field(6, description='Возраст, лет')
-    kms_per_year: int = Field(4500, description='Пробег в год, км')
+    Present_Price: float = Field(..., examples=[5.59], description='Цена нового экземпляра, лакхов')
+    Kms_Driven: int = Field(..., examples=[27000], description='Пробег, км')
+    Fuel_Type: Literal['Petrol', 'Diesel', 'CNG'] = Field(..., examples=['Petrol'], description='Тип топлива')
+    Seller_Type: Literal['Dealer', 'Individual'] = Field(..., examples=['Dealer'], description='Тип продавца')
+    Transmission: Literal['Manual', 'Automatic'] = Field(..., examples=['Manual'], description='Коробка передач')
+    Owner: int = Field(..., examples=[0], description='Число предыдущих владельцев')
+    vehicle_type: Literal['car', 'two_wheeler'] = Field(..., examples=['car'], description='Тип транспорта')
+    car_age: int = Field(..., examples=[6], description='Возраст, лет')
+    kms_per_year: int = Field(..., examples=[4500], description='Пробег в год, км')
 
 
 @app.get('/')
@@ -46,6 +48,7 @@ def root():
 def make_prediction(item_id: int, item_features: VehicleFeatures):
     """Предсказание цены продажи для одного объявления."""
     price = app.handler.predict(item_features.model_dump())
+    observe(price, item_features.car_age)
     return {
         'item_id': item_id,
         'predict': round(price, 4),

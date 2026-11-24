@@ -16,3 +16,4 @@ mlxtend==0.25.0
 # микросервис предсказаний (ЛР3)
 fastapi==0.141.1
 uvicorn==0.54.0
+prometheus-client==0.26.0

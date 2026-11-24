@@ -13,3 +13,4 @@ numpy==2.4.6
 # cloudpickle нужен и при загрузке model.pkl: пайплайн содержит класс,
 # описанный в блокноте, и cloudpickle восстанавливает его определение.
 cloudpickle==3.1.2
+prometheus-client==0.26.0

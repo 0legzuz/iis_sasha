@@ -7,6 +7,8 @@
 Исходная выборка: [Car Price Prediction (used cars)](https://www.kaggle.com/datasets/vijayaadithyanvg/car-price-predictionused-cars/data)
 — 301 объявление, 8 признаков. Все цены указаны в лакхах индийских рупий (1 лакх = 100 000 ₹).
 
+В Jupyter проведены разведочный анализ (pandas, NumPy, Matplotlib, Seaborn, Plotly), обучение случайного леса (scikit-learn), отбор признаков (mlxtend) и подбор параметров (Optuna). Эксперименты и модель сохранены в MLflow. FastAPI и Uvicorn обслуживают предсказания. Docker Compose запускает API, генератор нагрузки, Prometheus и Grafana.
+
 # Запуск
 
 Для запуска проекта под ОС GNU/Linux необходимо выполнить команды:
@@ -335,3 +337,66 @@ curl -X POST "http://localhost:8000/api/prediction?item_id=42" \
 (`Fuel_Type`: Petrol / Diesel / CNG, `Seller_Type`: Dealer / Individual,
 `Transmission`: Manual / Automatic, `vehicle_type`: car / two_wheeler).
 На неверное значение сервис отвечает кодом 422 с описанием ошибки.
+
+## ЛР4. Мониторинг сервиса предсказаний
+
+Все 9 признаков обязательны. Полный пример в Swagger возвращает HTTP 200. При пропуске признака сервис возвращает HTTP 422 с именем поля. [Пошаговый отчёт по ЛР4](sasha_lab4_report.pdf)
+
+Из корня проекта (Docker Desktop или Docker Engine с Compose):
+
+```sh
+cd services
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=15 requests
+```
+
+Для сборки из Git нужна модель ЛР3 в `services/models/model.pkl`. В архиве ЛР4 она уже приложена.
+Swagger доступен по адресу http://localhost:8001/docs, метрики — http://localhost:8001/metrics.
+Откройте [Prometheus Targets](http://localhost:9091/targets) и проверьте статус `UP` у `ml_service`.
+Для остановки из папки `services` выполните `docker compose down`. Именованные тома сохраняют историю между запусками.
+
+| Файлы | Назначение |
+|---|---|
+| `ml_service/monitoring.py` | Счётчики HTTP, длительность запросов, распределения предсказаний и возраста |
+| `requests/requests.py`, `requests/Dockerfile` | Генерация синтетических примеров каждые 0–5 с средствами стандартной библиотеки Python. Каждый десятый запрос содержит некорректное тело и возвращает 422 |
+| `prometheus/prometheus.yml` | Опрос API каждые 5 секунд |
+| `grafana/dashboard.json`, `grafana/provisioning/` | Дашборд, источник данных и автоматический импорт при запуске |
+
+### Графики
+
+Откройте [дашборд Grafana](http://localhost:3001/d/car-price-lab4/lab4) с учебной учётной записью `admin` / `admin`. Для заполнения пятиминутных окон оставьте генератор работать пять минут.
+
+| График | Уровень | Что показывает |
+|---|---|---|
+| Распределение цен, лакхи | Модельный | Число прогнозов в каждом интервале за последние 5 минут. |
+| Запросы в минуту | Прикладной | Частота обращений к методу предсказания за минуту. |
+| Ошибки HTTP | Прикладной | Два счётчика с момента запуска API. 4xx отражает ошибки запроса, 5xx — ошибки сервиса. |
+| Доступность API | Инфраструктурный | Единица означает успешный опрос API со стороны Prometheus, ноль — неудачный. |
+| Время ответа p95, с | Прикладной | Оценка 95-го процентиля времени ответа по гистограмме за 5 минут. |
+| Средний возраст транспорта, лет | Модельный | Сравнение возраста во входящем потоке со средним на очищенной выборке ЛР1. Расхождение служит сигналом изменения состава данных. |
+
+Графики Prometheus для снимков экрана:
+
+1. [Распределение цен, лакхи](http://localhost:9091/graph?g0.expr=label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%220.5%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%E2%89%A4+0.5%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%221.0%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%220.5%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%280.5%2C+1%5D%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%222.0%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%221.0%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%281%2C+2%5D%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%223.0%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%222.0%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%282%2C+3%5D%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%225.0%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%223.0%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%283%2C+5%5D%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%228.0%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%225.0%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%285%2C+8%5D%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%2212.0%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%228.0%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%288%2C+12%5D%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%2220.0%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%2212.0%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%2812%2C+20%5D%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%2235.0%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%2220.0%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%2820%2C+35%5D%22%2C+%22%22%2C+%22%22%29+or+label_replace%28%28sum%28increase%28model_prediction_bucket%7Ble%3D%22%2BInf%22%7D%5B5m%5D%29%29+-+sum%28increase%28model_prediction_bucket%7Ble%3D%2235.0%22%7D%5B5m%5D%29%29%29%2C+%22interval%22%2C+%22%3E+35%22%2C+%22%22%2C+%22%22%29&g0.tab=0&g0.range_input=15m)
+2. [Запросы в минуту](http://localhost:9091/graph?g0.expr=60+%2A+sum%28rate%28prediction_requests_total%5B1m%5D%29%29&g0.tab=0&g0.range_input=15m)
+3. [Ошибки HTTP](http://localhost:9091/graph?g0.expr=sum+by+%28status_class%29+%28prediction_requests_total%7Bstatus_class%3D~%224xx%7C5xx%22%7D%29&g0.tab=0&g0.range_input=15m)
+
+Снимки работающего стенда можно сохранить в README командой из корня проекта:
+
+```sh
+python3 -m venv /tmp/lab4-capture
+/tmp/lab4-capture/bin/pip install playwright
+/tmp/lab4-capture/bin/playwright install chromium
+/tmp/lab4-capture/bin/python services/capture.py
+```
+
+### Снимки работающего стенда
+
+![Предсказания](services/screenshots/predictions.png)
+
+![Запросы в минуту](services/screenshots/rate.png)
+
+![Ошибки HTTP](services/screenshots/errors.png)
+
+![Дашборд Grafana](services/screenshots/grafana.png)

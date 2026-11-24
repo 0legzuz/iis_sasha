@@ -1,0 +1,265 @@
+{
+  "uid": "car-price-lab4",
+  "title": "Car Price — мониторинг ЛР4",
+  "schemaVersion": 40,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Распределение цен, лакхи",
+      "type": "timeseries",
+      "description": "Число прогнозов в каждом интервале за последние 5 минут.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(model_prediction_bucket{le=\"0.5\"}[5m]))",
+          "legendFormat": "≤ 0.5",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(model_prediction_bucket{le=\"1.0\"}[5m])) - sum(increase(model_prediction_bucket{le=\"0.5\"}[5m]))",
+          "legendFormat": "(0.5, 1]",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "sum(increase(model_prediction_bucket{le=\"2.0\"}[5m])) - sum(increase(model_prediction_bucket{le=\"1.0\"}[5m]))",
+          "legendFormat": "(1, 2]",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "sum(increase(model_prediction_bucket{le=\"3.0\"}[5m])) - sum(increase(model_prediction_bucket{le=\"2.0\"}[5m]))",
+          "legendFormat": "(2, 3]",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "E",
+          "expr": "sum(increase(model_prediction_bucket{le=\"5.0\"}[5m])) - sum(increase(model_prediction_bucket{le=\"3.0\"}[5m]))",
+          "legendFormat": "(3, 5]",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "F",
+          "expr": "sum(increase(model_prediction_bucket{le=\"8.0\"}[5m])) - sum(increase(model_prediction_bucket{le=\"5.0\"}[5m]))",
+          "legendFormat": "(5, 8]",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "G",
+          "expr": "sum(increase(model_prediction_bucket{le=\"12.0\"}[5m])) - sum(increase(model_prediction_bucket{le=\"8.0\"}[5m]))",
+          "legendFormat": "(8, 12]",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "H",
+          "expr": "sum(increase(model_prediction_bucket{le=\"20.0\"}[5m])) - sum(increase(model_prediction_bucket{le=\"12.0\"}[5m]))",
+          "legendFormat": "(12, 20]",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "I",
+          "expr": "sum(increase(model_prediction_bucket{le=\"35.0\"}[5m])) - sum(increase(model_prediction_bucket{le=\"20.0\"}[5m]))",
+          "legendFormat": "(20, 35]",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "J",
+          "expr": "sum(increase(model_prediction_bucket{le=\"+Inf\"}[5m])) - sum(increase(model_prediction_bucket{le=\"35.0\"}[5m]))",
+          "legendFormat": "> 35",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Запросы в минуту",
+      "type": "timeseries",
+      "description": "Частота обращений к методу предсказания за минуту.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "60 * sum(rate(prediction_requests_total[1m]))",
+          "legendFormat": "Запросы/мин",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Ошибки HTTP",
+      "type": "timeseries",
+      "description": "Два счётчика с момента запуска API. 4xx отражает ошибки запроса, 5xx — ошибки сервиса.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status_class) (prediction_requests_total{status_class=~\"4xx|5xx\"})",
+          "legendFormat": "{{status_class}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Доступность API",
+      "type": "timeseries",
+      "description": "Единица означает успешный опрос API со стороны Prometheus, ноль — неудачный.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"ml_service\"}",
+          "legendFormat": "Доступен",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Время ответа p95, с",
+      "type": "timeseries",
+      "description": "Оценка 95-го процентиля времени ответа по гистограмме за 5 минут.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(prediction_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Средний возраст транспорта, лет",
+      "type": "timeseries",
+      "description": "Сравнение возраста во входящем потоке со средним на очищенной выборке ЛР1. Расхождение служит сигналом изменения состава данных.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prom"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(input_age_years_sum[5m])) / sum(rate(input_age_years_count[5m]))",
+          "legendFormat": "Входящий поток",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "vector(6.3535)",
+          "legendFormat": "Очищенная выборка",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prom"
+          }
+        }
+      ]
+    }
+  ]
+}

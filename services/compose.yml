@@ -1,0 +1,32 @@
+name: car-price-lab4
+services:
+  ml_service:
+    build: ./ml_service
+    image: car-price-service:2
+    ports: ["127.0.0.1:8001:8000"]
+    volumes: ["./models:/models:ro"]
+  requests:
+    build: ./requests
+    image: car-price-requests:1
+    environment:
+      API_URL: http://ml_service:8000
+    depends_on: [ml_service]
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    ports: ["127.0.0.1:9091:9090"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - metrics:/prometheus
+  grafana:
+    image: grafana/grafana:11.6.0
+    ports: ["127.0.0.1:3001:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - dashboards:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboard.json:/etc/dashboards/lab4.json:ro
+volumes:
+  metrics:
+  dashboards:
